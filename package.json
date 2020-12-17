@@ -21,12 +21,14 @@
     "build:nuxt": "nuxt build",
     "start:nuxt": "nuxt start",
     "generate:nuxt": "nuxt generate",
-    "prepublishOnly": "yarn prebuild:lib && yarn build:lib"
+    "format": "prettier src/**/* --write --quiet",
+    "prepublishOnly": "yarn run format && yarn prebuild:lib && yarn build:lib"
   },
   "devDependencies": {
     "@nuxt/content-theme-docs": "^0.6.1",
     "@types/node": "^14.11.2",
     "nuxt": "^2.14.6",
+    "prettier": "^2.2.1",
     "rimraf": "^3.0.2",
     "ts-node": "^9.0.0",
     "typedoc": "^0.19.2",

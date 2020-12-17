@@ -5,12 +5,18 @@ import * as slug from "remark-slug";
 import * as unified from "unified";
 import * as stringify from "rehype-stringify";
 import * as raw from "rehype-raw";
+import { VFile } from "vfile";
 
 const jsonC = require("../compilers/json");
 
 import { processMarkdownPlugins } from "../utils/plugins";
 import { cwd } from "process";
 import { Logger } from "../utils/logger";
+import { FileExtension } from "../utils/types";
+
+export type MarkdownFile<T extends "multiple" | "single"> = T extends "single"
+  ? ({ file?: string } & Record<string, unknown>) | string
+  : (string | ({ file?: string } & Record<string, unknown>))[];
 
 export interface MarkdownToc {
   id: string;
@@ -24,9 +30,19 @@ export interface MarkdownPlugin {
   options?: object;
 }
 
+export type MarkdownJSON<T> = T & {
+  title: string;
+  subtitle: string;
+  extension: FileExtension;
+  updatedAt: number;
+  toc: MarkdownToc;
+  body: string;
+};
+
 export interface GenerateContentOptions {
   toc: boolean;
 }
+
 /**
  * @property {any[]} remarkPlugins - String array for the names of the plugins to use
  * Alternatively, accepts an Object with 'name' and 'options' properties for especify lib options.
@@ -69,18 +85,28 @@ export class Markdown {
 
   /**
    * Converts markdown document to it's JSON structure.
+   * Set the type parameter "F" to "single" to get a single object.
    * @param {string} file - Markdown file
    * @return {string} - Object stringified
    */
-  public toJSON(file: any): any {
+  public toJSON<
+    F extends "multiple" | "single" = "multiple",
+    T = Record<string, unknown>
+  >(
+    file: MarkdownFile<F>
+  ): F extends "single" ? MarkdownJSON<T> : Array<MarkdownJSON<T>> {
     if (Array.isArray(file)) {
-      return this.processMultipleFileJSON(file);
+      return this.processMultipleFileJSON(file) as F extends "single"
+        ? MarkdownJSON<T>
+        : Array<MarkdownJSON<T>>;
     } else {
-      return this.processSingleFileJSON(file);
+      return this.processSingleFileJSON(file as MarkdownFile<"single">);
     }
   }
 
-  private processSingleFileJSON(file: any): any {
+  private processSingleFileJSON<T>(
+    file: MarkdownFile<"single">
+  ): MarkdownJSON<T> {
     let obj: any;
 
     if (typeof file === "string") {
@@ -94,7 +120,9 @@ export class Markdown {
     return obj;
   }
 
-  private processMultipleFileJSON(file: any) {
+  private processMultipleFileJSON<T>(
+    file: MarkdownFile<"multiple">
+  ): Array<MarkdownJSON<T>> {
     let obj: any[] = [];
 
     for (let item of file) {
@@ -135,6 +163,7 @@ export class Markdown {
 
     return obj;
   }
+
   private processMultipleFileHTML(file: any): any {
     let obj: any[] = [];
 
@@ -170,31 +199,22 @@ export class Markdown {
   }
 
   private toString(file: any) {
-    let body = this.generateContent(file, { toc: false });
-    return body;
+    return this.generateContent(file, { toc: false });
   }
 
-  private generateContent(
-    content: string,
-    options: GenerateContentOptions
-  ): any {
-    let stream = unified()
-      .use(parse)
-      .use(slug);
+  private generateContent(content: string, options: GenerateContentOptions) {
+    let stream = unified().use(parse).use(slug);
 
     stream = this.processPluginsFor("remark", stream);
     stream = stream.use(remark2rehype, { allowDangerousHtml: true });
     stream = this.processPluginsFor("rehype", stream);
 
     if (options.toc) {
-      let tree: any = stream.use(jsonC).processSync(content);
+      let tree: VFile = stream.use(jsonC).processSync(content) as VFile;
       return tree.result;
     }
 
-    let tree: any = stream
-      .use(raw)
-      .use(stringify)
-      .processSync(content);
+    let tree = stream.use(raw).use(stringify).processSync(content);
     return tree.contents;
   }
 

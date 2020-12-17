@@ -18,10 +18,8 @@ export class Csv {
    * @return {Object}
    */
   public async toJSON(file: string): Promise<Csvtojson> {
-    const body = await csv({ output: "json", ...this.options }).fromString(
-      file
-    );
-
+    const body = await csv({ ...this.options }).fromString(file);
+    ``;
     return {
       body,
     };

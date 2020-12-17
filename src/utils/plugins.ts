@@ -2,6 +2,7 @@ import * as path from "path";
 import { MarkdownParserOptions, MarkdownPlugin } from "../parsers/markdown";
 
 import { Logger } from "./logger";
+
 const logger = new Logger();
 
 /**
@@ -11,7 +12,7 @@ const logger = new Logger();
  */
 export function processMarkdownPlugins(
   options: MarkdownParserOptions,
-  resolvePath: string,
+  resolvePath: string
 ): void {
   options.remarkPlugins = loopPLugins("remark", options, resolvePath);
   options.rehypePlugins = loopPLugins("rehype", options, resolvePath);
@@ -29,7 +30,7 @@ const loopPLugins = (
   options: MarkdownParserOptions,
   resolvePath: string
 ): MarkdownPlugin[] => {
-  const plugins = [];
+  const plugins: any[] = [];
   const typePlugins: any[] = options[`${type}Plugins`]
     ? options[`${type}Plugins`]
     : [];
@@ -39,7 +40,7 @@ const loopPLugins = (
   }
 
   for (const plugin of typePlugins) {
-    let name: string;
+    let name: string = "";
     let options: any;
     let instance: () => {};
     let pathToRequire: string;
