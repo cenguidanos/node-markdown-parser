@@ -17,34 +17,37 @@ export const parseAcceptLanguage = input => {
 
 /**
  * Find locale code that best matches provided list of browser locales.
- * @param {string[]} appLocales The user-configured locale codes that are to be matched.
+ * @param {(string[]|Object[])} appLocales The user-configured locale codes that are to be matched.
  * @param {string[]} browserLocales The locales to match against configured.
- * @return {string?}
+ * @return {string|undefined}
  */
 export const matchBrowserLocale = (appLocales, browserLocales) => {
   /** @type {{ code: string, score: number }[]} */
   const matchedLocales = []
 
+  // Normalise appLocales input
+  appLocales = appLocales.map(appLocale => ({
+    code: typeof appLocale === 'string' ? appLocale : appLocale.code,
+    iso: typeof appLocale === 'string' ? appLocale : (appLocale.iso || appLocale.code)
+  }))
+
   // First pass: match exact locale.
   for (const [index, browserCode] of browserLocales.entries()) {
-    const matchedCode = appLocales.find(appCode => appCode.toLowerCase() === browserCode.toLowerCase())
-    if (matchedCode) {
-      matchedLocales.push({ code: matchedCode, score: 1 - index / browserLocales.length })
+    const matchedLocale = appLocales.find(appLocale => appLocale.iso.toLowerCase() === browserCode.toLowerCase())
+    if (matchedLocale) {
+      matchedLocales.push({ code: matchedLocale.code, score: 1 - index / browserLocales.length })
       break
     }
   }
 
   // Second pass: match only locale code part of the browser locale (not including country).
   for (const [index, browserCode] of browserLocales.entries()) {
-    if (browserCode.includes('-')) {
-      // For backwards-compatibility, this is lower-cased before comparing.
-      const languageCode = browserCode.split('-')[0].toLowerCase()
-
-      if (appLocales.includes(languageCode)) {
-        // Deduct a thousandth for being non-exact match.
-        matchedLocales.push({ code: languageCode, score: 0.999 - index / browserLocales.length })
-        break
-      }
+    const languageCode = browserCode.split('-')[0].toLowerCase()
+    const matchedLocale = appLocales.find(appLocale => appLocale.iso.split('-')[0].toLowerCase() === languageCode)
+    if (matchedLocale) {
+      // Deduct a thousandth for being non-exact match.
+      matchedLocales.push({ code: matchedLocale.code, score: 0.999 - index / browserLocales.length })
+      break
     }
   }
 
@@ -60,7 +63,7 @@ export const matchBrowserLocale = (appLocales, browserLocales) => {
     })
   }
 
-  return matchedLocales.length ? matchedLocales[0].code : null
+  return matchedLocales.length ? matchedLocales[0].code : undefined
 }
 
 /**
@@ -85,23 +88,30 @@ export const resolveBaseUrl = (baseUrl, context) => {
  * @return {string | null} Locade code found if any
  */
 export const getLocaleDomain = (locales, req, { localDomainKey, localeCodeKey }) => {
-  let hostname = null
+  let host = null
 
   if (process.client) {
-    hostname = window.location.hostname
+    host = window.location.host
   } else if (req) {
-    hostname = req.headers['x-forwarded-host'] || req.headers.host
+    host = req.headers['x-forwarded-host'] || req.headers.host
   }
 
-  if (hostname) {
-    const localeDomain = locales.find(l => l[localDomainKey] === hostname)
-    if (localeDomain) {
-      return localeDomain[localeCodeKey]
+  if (host) {
+    const matchingLocale = locales.find(l => l[localDomainKey] === host)
+    if (matchingLocale) {
+      return matchingLocale[localeCodeKey]
     }
   }
 
   return null
 }
+
+/**
+ * Creates a RegExp for route paths
+ * @param  {string[]} localeCodes
+ * @return {RegExp}
+ */
+export const getLocalesRegex = localeCodes => new RegExp(`^/(${localeCodes.join('|')})(?:/|$)`, 'i')
 
 /**
  * Creates getter for getLocaleFromRoute
@@ -113,8 +123,7 @@ export const createLocaleFromRouteGetter = (localeCodes, { routesNameSeparator, 
   const localesPattern = `(${localeCodes.join('|')})`
   const defaultSuffixPattern = `(?:${routesNameSeparator}${defaultLocaleRouteNameSuffix})?`
   const regexpName = new RegExp(`${routesNameSeparator}${localesPattern}${defaultSuffixPattern}$`, 'i')
-  const regexpPath = new RegExp(`^/${localesPattern}/`, 'i')
-
+  const regexpPath = getLocalesRegex(localeCodes)
   /**
    * Extract locale code from given route:
    * - If route has a name, try to extract locale from it
@@ -170,9 +179,9 @@ export const getLocaleCookie = (req, { useCookie, cookieKey, localeCodes }) => {
 /**
  * @param {string} locale
  * @param {object} [res]
- * @param {{ useCookie: boolean, cookieDomain: string, cookieKey: string}} options
+ * @param {{ useCookie: boolean, cookieDomain: string, cookieKey: string, cookieSecure: boolean, cookieCrossOrigin: boolean}} options
  */
-export const setLocaleCookie = (locale, res, { useCookie, cookieDomain, cookieKey }) => {
+export const setLocaleCookie = (locale, res, { useCookie, cookieDomain, cookieKey, cookieSecure, cookieCrossOrigin }) => {
   if (!useCookie) {
     return
   }
@@ -180,7 +189,8 @@ export const setLocaleCookie = (locale, res, { useCookie, cookieDomain, cookieKe
   const cookieOptions = {
     expires: new Date(date.setDate(date.getDate() + 365)),
     path: '/',
-    sameSite: 'lax'
+    sameSite: cookieCrossOrigin ? 'none' : 'lax',
+    secure: cookieCrossOrigin || cookieSecure
   }
 
   if (cookieDomain) {
@@ -211,46 +221,60 @@ export const registerStore = (store, vuex, localeCodes, moduleName) => {
       ...(vuex.syncRouteParams ? { routeParams: {} } : {})
     }),
     actions: {
-      ...(vuex.syncLocale ? {
-        setLocale ({ commit }, locale) {
-          commit('setLocale', locale)
-        }
-      } : {}),
-      ...(vuex.syncMessages ? {
-        setMessages ({ commit }, messages) {
-          commit('setMessages', messages)
-        }
-      } : {}),
-      ...(vuex.syncRouteParams ? {
-        setRouteParams ({ commit }, params) {
-          if (process.env.NODE_ENV === 'development') {
-            validateRouteParams(params, localeCodes, moduleName)
+      ...(vuex.syncLocale
+        ? {
+            setLocale ({ commit }, locale) {
+              commit('setLocale', locale)
+            }
           }
-          commit('setRouteParams', params)
-        }
-      } : {})
+        : {}),
+      ...(vuex.syncMessages
+        ? {
+            setMessages ({ commit }, messages) {
+              commit('setMessages', messages)
+            }
+          }
+        : {}),
+      ...(vuex.syncRouteParams
+        ? {
+            setRouteParams ({ commit }, params) {
+              if (process.env.NODE_ENV === 'development') {
+                validateRouteParams(params, localeCodes, moduleName)
+              }
+              commit('setRouteParams', params)
+            }
+          }
+        : {})
     },
     mutations: {
-      ...(vuex.syncLocale ? {
-        setLocale (state, locale) {
-          state.locale = locale
-        }
-      } : {}),
-      ...(vuex.syncMessages ? {
-        setMessages (state, messages) {
-          state.messages = messages
-        }
-      } : {}),
-      ...(vuex.syncRouteParams ? {
-        setRouteParams (state, params) {
-          state.routeParams = params
-        }
-      } : {})
+      ...(vuex.syncLocale
+        ? {
+            setLocale (state, locale) {
+              state.locale = locale
+            }
+          }
+        : {}),
+      ...(vuex.syncMessages
+        ? {
+            setMessages (state, messages) {
+              state.messages = messages
+            }
+          }
+        : {}),
+      ...(vuex.syncRouteParams
+        ? {
+            setRouteParams (state, params) {
+              state.routeParams = params
+            }
+          }
+        : {})
     },
     getters: {
-      ...(vuex.syncRouteParams ? {
-        localeRouteParams: ({ routeParams }) => locale => routeParams[locale] || {}
-      } : {})
+      ...(vuex.syncRouteParams
+        ? {
+            localeRouteParams: ({ routeParams }) => locale => routeParams[locale] || {}
+          }
+        : {})
     }
   }, { preserveState: !!store.state[vuex.moduleName] })
 }

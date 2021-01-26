@@ -1,26 +1,29 @@
 import Vue from 'vue'
-import { parse } from 'cookie'
 import colorSchemeComponent from './color-scheme'
-const cookieKey = 'nuxt-color-mode'
 
 Vue.component('ColorScheme', colorSchemeComponent)
 
 export default function (ctx, inject) {
-  let preference = 'system'
-
-  // Try to read from cookies
-  if (ctx.req) {
-    // Check if cookie exist, otherwise TypeError: argument str must be a string
-    const cookies = parse(ctx.req.headers.cookie || '')
-    if (cookies[cookieKey]) {
-      preference = cookies[cookieKey]
-    }
-  }
+  const preference = 'system'
 
   const colorMode = {
     preference,
     value: preference,
-    unknown: process.static || !ctx.req || preference === 'system'
+    unknown: true,
+    forced: false
+  }
+
+  if (ctx.route.matched[0]) {
+    const pageColorMode = ctx.route.matched[0].components.default.options.colorMode
+    if (pageColorMode && pageColorMode !== 'system') {
+      colorMode.value = pageColorMode
+      colorMode.forced = true
+
+      ctx.app.head.bodyAttrs = ctx.app.head.bodyAttrs || {}
+      ctx.app.head.bodyAttrs['data-color-mode-forced'] = pageColorMode
+    } else if (pageColorMode === 'system') {
+      console.warn('You cannot force the colorMode to system at the page level.')
+    }
   }
 
   ctx.beforeNuxtRender(({ nuxtState }) => {

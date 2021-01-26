@@ -4,15 +4,16 @@ import { getMatchedComponentsInstances, getChildrenComponentInstancesUsingFetch,
 import NuxtError from '..\\node_modules\\@nuxt\\content-theme-docs\\src\\layouts\\error.vue'
 import NuxtLoading from './components/nuxt-loading.vue'
 
-import '..\\node_modules\\@nuxt\\content-theme-docs\\src\\assets\\css\\tailwind.css'
+import '..\\node_modules\\@nuxtjs\\tailwindcss\\lib\\files\\tailwind.css'
 
 import '..\\node_modules\\@nuxt\\content-theme-docs\\src\\assets\\css\\main.css'
 
 import '..\\node_modules\\prism-themes\\themes\\prism-material-oceanic.css'
 
 import _6f6c098b from '..\\node_modules\\@nuxt\\content-theme-docs\\src\\layouts\\default.vue'
+import _ee708084 from '..\\node_modules\\@nuxt\\content-theme-docs\\src\\layouts\\single.vue'
 
-const layouts = { "_default": sanitizeComponent(_6f6c098b) }
+const layouts = { "_default": sanitizeComponent(_6f6c098b),"_single": sanitizeComponent(_ee708084) }
 
 export default {
   render (h, props) {
@@ -66,7 +67,8 @@ export default {
   },
   created () {
     // Add this.$nuxt in child instances
-    Vue.prototype.$nuxt = this
+    this.$root.$options.$nuxt = this
+
     if (process.client) {
       // add to window so we can listen when ready
       window.$nuxt = this
@@ -173,15 +175,24 @@ export default {
       }
       this.$loading.finish()
     },
-
     errorChanged () {
-      if (this.nuxt.err && this.$loading) {
-        if (this.$loading.fail) {
-          this.$loading.fail(this.nuxt.err)
+      if (this.nuxt.err) {
+        if (this.$loading) {
+          if (this.$loading.fail) {
+            this.$loading.fail(this.nuxt.err)
+          }
+          if (this.$loading.finish) {
+            this.$loading.finish()
+          }
         }
-        if (this.$loading.finish) {
-          this.$loading.finish()
+
+        let errorLayout = (NuxtError.options || NuxtError).layout;
+
+        if (typeof errorLayout === 'function') {
+          errorLayout = errorLayout(this.context)
         }
+
+        this.setLayout(errorLayout)
       }
     },
 
@@ -200,18 +211,39 @@ export default {
       return Promise.resolve(layouts['_' + layout])
     },
 
+    getRouterBase() {
+      return (this.$router.options.base || '').replace(/\/+$/, '')
+    },
+    getRoutePath(route = '/') {
+      const base = this.getRouterBase()
+      if (base && route.startsWith(base)) {
+        route = route.substr(base.length)
+      }
+      return (route.replace(/\/+$/, '') || '/').split('?')[0].split('#')[0]
+    },
+    getStaticAssetsPath(route = '/') {
+      const { staticAssetsBase } = window.__NUXT__
+
+      return urlJoin(staticAssetsBase, this.getRoutePath(route))
+    },
+
+      async fetchStaticManifest() {
+      return window.__NUXT_IMPORT__('manifest.js', encodeURI(urlJoin(this.getStaticAssetsPath(), 'manifest.js')))
+    },
+
     setPagePayload(payload) {
       this._pagePayload = payload
       this._payloadFetchIndex = 0
     },
     async fetchPayload(route) {
-      const { staticAssetsBase } = window.__NUXT__
-      const base = (this.$router.options.base || '').replace(/\/+$/, '')
-      if (base && route.startsWith(base)) {
-        route = route.substr(base.length)
+      const manifest = await this.fetchStaticManifest()
+      const path = this.getRoutePath(route)
+      if (!manifest.routes.includes(path)) {
+        this.setPagePayload(false)
+        throw new Error(`Route ${path} is not pre-rendered`)
       }
-      route = (route.replace(/\/+$/, '') || '/').split('?')[0].split('#')[0]
-      const src = urlJoin(base, staticAssetsBase, route, 'payload.js')
+
+      const src = urlJoin(this.getStaticAssetsPath(route), 'payload.js')
       try {
         const payload = await window.__NUXT_IMPORT__(decodeURI(route), encodeURI(src))
         this.setPagePayload(payload)

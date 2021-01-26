@@ -31,11 +31,6 @@ function localeRoute (route, locale) {
 
   const { i18n } = this
 
-  if (strategy === STRATEGIES.NO_PREFIX && locale && locale !== i18n.locale) {
-    // eslint-disable-next-line no-console
-    console.warn(`[${MODULE_NAME}] Passing non-current locale to localePath is unsupported when using no_prefix strategy`)
-  }
-
   locale = locale || i18n.locale
 
   if (!locale) {
@@ -86,19 +81,17 @@ function localeRoute (route, locale) {
 }
 
 function switchLocalePath (locale) {
-  const i18n = this.i18n
-
-  if (strategy === STRATEGIES.NO_PREFIX && locale && locale !== i18n.locale) {
-    // eslint-disable-next-line no-console
-    console.warn(`[${MODULE_NAME}] Passing non-current locale to switchLocalePath is unsupported when using no_prefix strategy`)
-  }
-
   const name = this.getRouteBaseName()
   if (!name) {
     return ''
   }
 
-  const { route, store } = this
+  const { i18n, route, store } = this
+
+  if (!route) {
+    return ''
+  }
+
   const { params, ...routeCopy } = route
   let langSwitchParams = {}
   if (vuex && vuex.syncRouteParams && store) {
@@ -136,18 +129,17 @@ function switchLocalePath (locale) {
 
 function getRouteBaseName (givenRoute) {
   const route = givenRoute !== undefined ? givenRoute : this.route
-  if (!route.name) {
+  if (!route || !route.name) {
     return null
   }
   return route.name.split(routesNameSeparator)[0]
 }
 
 function getLocaleRouteName (routeName, locale) {
-  const name = routeName + (strategy === STRATEGIES.NO_PREFIX ? '' : routesNameSeparator + locale)
+  let name = routeName + (strategy === STRATEGIES.NO_PREFIX ? '' : routesNameSeparator + locale)
 
-  // Match route without prefix for default locale
   if (locale === defaultLocale && strategy === STRATEGIES.PREFIX_AND_DEFAULT) {
-    return name + routesNameSeparator + defaultLocaleRouteNameSuffix
+    name += routesNameSeparator + defaultLocaleRouteNameSuffix
   }
 
   return name

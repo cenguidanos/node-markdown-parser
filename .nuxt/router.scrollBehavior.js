@@ -1,38 +1,36 @@
-import { getMatchedComponents } from './utils'
+import { getMatchedComponents, setScrollRestoration } from './utils'
 
 if (process.client) {
   if ('scrollRestoration' in window.history) {
-    window.history.scrollRestoration = 'manual'
+    setScrollRestoration('manual')
 
     // reset scrollRestoration to auto when leaving page, allowing page reload
     // and back-navigation from other pages to use the browser to restore the
     // scrolling position.
     window.addEventListener('beforeunload', () => {
-      window.history.scrollRestoration = 'auto'
+      setScrollRestoration('auto')
     })
 
     // Setting scrollRestoration to manual again when returning to this page.
     window.addEventListener('load', () => {
-      window.history.scrollRestoration = 'manual'
+      setScrollRestoration('manual')
     })
   }
 }
 
 export default function (to, from, savedPosition) {
-  // if the returned position is falsy or an empty object,
-  // will retain current scroll position.
+  // If the returned position is falsy or an empty object, will retain current scroll position
   let position = false
 
-  // if no children detected and scrollToTop is not explicitly disabled
   const Pages = getMatchedComponents(to)
+
+  // Scroll to the top of the page if...
   if (
-    Pages.length < 2 &&
-    Pages.every(Page => Page.options.scrollToTop !== false)
+      // One of the children set `scrollToTop`
+      Pages.some(Page => Page.options.scrollToTop) ||
+      // scrollToTop set in only page without children
+      (Pages.length < 2 && Pages.every(Page => Page.options.scrollToTop !== false))
   ) {
-    // scroll to the top of the page
-    position = { x: 0, y: 0 }
-  } else if (Pages.some(Page => Page.options.scrollToTop)) {
-    // if one of the children has scrollToTop option set to true
     position = { x: 0, y: 0 }
   }
 
@@ -43,8 +41,12 @@ export default function (to, from, savedPosition) {
 
   const nuxt = window.$nuxt
 
-  // triggerScroll is only fired when a new component is loaded
-  if (to.path === from.path && to.hash !== from.hash) {
+  if (
+    // Route hash changes
+    (to.path === from.path && to.hash !== from.hash) ||
+    // Initial load (vuejs/vue-router#3199)
+    to === from
+  ) {
     nuxt.$nextTick(() => nuxt.$emit('triggerScroll'))
   }
 

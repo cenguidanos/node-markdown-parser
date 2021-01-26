@@ -1,12 +1,11 @@
 import Vue from 'vue'
-import { serialize } from 'cookie'
 import colorSchemeComponent from './color-scheme'
 
 Vue.component('ColorScheme', colorSchemeComponent)
 
-const cookieKey = 'nuxt-color-mode'
-const cookieOptions = JSON.parse('{"path":"/","sameSite":"lax"}')
+const storageKey = 'nuxt-color-mode'
 const colorMode = window['__NUXT_COLOR_MODE__']
+const getForcedColorMode = route => route.matched[0] && route.matched[0].components.default.options.colorMode
 
 export default function (ctx, inject) {
   let data = ctx.nuxtState.colorMode
@@ -15,13 +14,23 @@ export default function (ctx, inject) {
     data = {
       preference: colorMode.preference,
       value: colorMode.value,
-      unknown: colorMode.preference === 'system'
+      unknown: false
+    }
+    const pageColorMode = getForcedColorMode(ctx.route)
+    if (pageColorMode) {
+      data.value = pageColorMode
+      data.forced = true
+      colorMode.addClass(pageColorMode)
     }
   }
+  // Get current page component
   const $colorMode = new Vue({
     data,
     watch: {
       preference (preference) {
+        if (this.forced) {
+          return
+        }
         if (preference === 'system') {
           this.value = colorMode.getColorScheme()
           this._watchMedia()
@@ -40,48 +49,60 @@ export default function (ctx, inject) {
       if (this.preference === 'system') {
         this._watchMedia()
       }
+    },
+    mounted () {
       if (window.localStorage) {
         this._watchStorageChange()
       }
     },
     methods: {
       _watchMedia () {
-        if (this._mediaWatcher || !window.matchMedia) {
+        if (this._darkWatcher || !window.matchMedia) {
           return
         }
 
         this._darkWatcher = window.matchMedia('(prefers-color-scheme: dark)')
         this._darkWatcher.addListener((e) => {
-          if (this.preference === 'system') {
+          if (!this.forced && this.preference === 'system') {
             this.value = colorMode.getColorScheme()
           }
         })
       },
       _watchStorageChange () {
         window.addEventListener('storage', (e) => {
-          if (e.key === cookieKey) {
+          if (e.key === storageKey) {
             this.preference = e.newValue
           }
         })
       },
       _storePreference (preference) {
-        // Cookies for SSR
-        document.cookie = serialize(cookieKey, preference, cookieOptions)
-
         // Local storage to sync with other tabs
-        if (window.localStorage) {
-          window.localStorage.setItem(cookieKey, preference)
-        }
+        window.localStorage.setItem(storageKey, preference)
       }
     }
   })
 
-  if ($colorMode.unknown) {
-    window.onNuxtReady(() => {
+  window.onNuxtReady(() => {
+    if ($colorMode.unknown) {
       $colorMode.preference = colorMode.preference
       $colorMode.value = colorMode.value
       $colorMode.unknown = false
+    }
+    ctx.app.router.beforeEach((route, from, next) => {
+      const forcedColorMode = getForcedColorMode(route)
+
+      if (forcedColorMode && forcedColorMode !== 'system') {
+        $colorMode.value = forcedColorMode
+        $colorMode.forced = true
+      } else {
+        if (forcedColorMode === 'system') {
+          console.warn('You cannot force the colorMode to system at the page level.')
+        }
+        $colorMode.forced = false
+        $colorMode.value = $colorMode.preference === 'system' ? colorMode.getColorScheme() : $colorMode.preference
+      }
+      next()
     })
-  }
+  })
   inject('colorMode', $colorMode)
 }

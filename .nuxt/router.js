@@ -1,10 +1,11 @@
 import Vue from 'vue'
 import Router from 'vue-router'
+import { normalizeURL, decode } from '@nuxt/ufo'
 import { interopDefault } from './utils'
 import scrollBehavior from './router.scrollBehavior.js'
 
-const _7cc22b3c = () => interopDefault(import('..\\node_modules\\@nuxt\\content-theme-docs\\src\\pages\\releases.vue' /* webpackChunkName: "pages/releases" */))
-const _1b831aca = () => interopDefault(import('..\\node_modules\\@nuxt\\content-theme-docs\\src\\pages\\_slug.vue' /* webpackChunkName: "pages/_slug" */))
+const _eecdcbd6 = () => interopDefault(import('..\\node_modules\\@nuxt\\content-theme-docs\\src\\pages\\releases.vue' /* webpackChunkName: "pages/releases" */))
+const _36078734 = () => interopDefault(import('..\\node_modules\\@nuxt\\content-theme-docs\\src\\pages\\_.vue' /* webpackChunkName: "pages/_" */))
 
 // TODO: remove in Nuxt 3
 const emptyFn = () => {}
@@ -17,24 +18,50 @@ Vue.use(Router)
 
 export const routerOptions = {
   mode: 'history',
-  base: decodeURI('/'),
+  base: '/',
   linkActiveClass: 'nuxt-link-active',
   linkExactActiveClass: 'nuxt-link-exact-active',
   scrollBehavior,
 
   routes: [{
     path: "/releases",
-    component: _7cc22b3c,
+    component: _eecdcbd6,
     name: "releases___en"
   }, {
-    path: "/:slug?",
-    component: _1b831aca,
-    name: "slug___en"
+    path: "/",
+    component: _36078734,
+    name: "index___en"
+  }, {
+    path: "/*",
+    component: _36078734,
+    name: "all___en"
   }],
 
   fallback: false
 }
 
+function decodeObj(obj) {
+  for (const key in obj) {
+    if (typeof obj[key] === 'string') {
+      obj[key] = decode(obj[key])
+    }
+  }
+}
+
 export function createRouter () {
-  return new Router(routerOptions)
+  const router = new Router(routerOptions)
+
+  const resolve = router.resolve.bind(router)
+  router.resolve = (to, current, append) => {
+    if (typeof to === 'string') {
+      to = normalizeURL(to)
+    }
+    const r = resolve(to, current, append)
+    if (r && r.resolved && r.resolved.query) {
+      decodeObj(r.resolved.query)
+    }
+    return r
+  }
+
+  return router
 }

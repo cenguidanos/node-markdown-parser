@@ -1,4 +1,5 @@
 import Vue from 'vue'
+import Vuex from 'vuex'
 import Meta from 'vue-meta'
 import ClientOnly from 'vue-client-only'
 import NoSsr from 'vue-no-ssr'
@@ -12,14 +13,15 @@ import { createStore } from './store.js'
 
 /* Plugins */
 
-import nuxt_plugin_plugin_ea6636f6 from 'nuxt_plugin_plugin_ea6636f6' // Source: .\\components\\plugin.js (mode: 'all')
-import nuxt_plugin_pluginrouting_c44741de from 'nuxt_plugin_pluginrouting_c44741de' // Source: .\\nuxt-i18n\\plugin.routing.js (mode: 'all')
-import nuxt_plugin_pluginmain_315a4dfe from 'nuxt_plugin_pluginmain_315a4dfe' // Source: .\\nuxt-i18n\\plugin.main.js (mode: 'all')
-import nuxt_plugin_workbox_19de4344 from 'nuxt_plugin_workbox_19de4344' // Source: .\\workbox.js (mode: 'client')
-import nuxt_plugin_pluginclient_606e7abb from 'nuxt_plugin_pluginclient_606e7abb' // Source: .\\content\\plugin.client.js (mode: 'client')
-import nuxt_plugin_pluginserver_73b0277a from 'nuxt_plugin_pluginserver_73b0277a' // Source: .\\content\\plugin.server.js (mode: 'server')
-import nuxt_plugin_pluginserver_499c0341 from 'nuxt_plugin_pluginserver_499c0341' // Source: .\\color-mode\\plugin.server.js (mode: 'server')
-import nuxt_plugin_pluginclient_383adc8e from 'nuxt_plugin_pluginclient_383adc8e' // Source: .\\color-mode\\plugin.client.js (mode: 'client')
+import nuxt_plugin_plugin_feec7978 from 'nuxt_plugin_plugin_feec7978' // Source: .\\components\\plugin.js (mode: 'all')
+import nuxt_plugin_pluginclient_5b0fe1fa from 'nuxt_plugin_pluginclient_5b0fe1fa' // Source: .\\content\\plugin.client.js (mode: 'client')
+import nuxt_plugin_pluginserver_7e6d58fc from 'nuxt_plugin_pluginserver_7e6d58fc' // Source: .\\content\\plugin.server.js (mode: 'server')
+import nuxt_plugin_pluginrouting_7aeb891c from 'nuxt_plugin_pluginrouting_7aeb891c' // Source: .\\nuxt-i18n\\plugin.routing.js (mode: 'all')
+import nuxt_plugin_pluginmain_2bfbb53d from 'nuxt_plugin_pluginmain_2bfbb53d' // Source: .\\nuxt-i18n\\plugin.main.js (mode: 'all')
+import nuxt_plugin_workbox_547fb4c3 from 'nuxt_plugin_workbox_547fb4c3' // Source: .\\workbox.js (mode: 'client')
+import nuxt_plugin_metaplugin_00973643 from 'nuxt_plugin_metaplugin_00973643' // Source: .\\pwa\\meta.plugin.js (mode: 'all')
+import nuxt_plugin_pluginserver_6e49dfa2 from 'nuxt_plugin_pluginserver_6e49dfa2' // Source: .\\color-mode\\plugin.server.js (mode: 'server')
+import nuxt_plugin_pluginclient_08906e1a from 'nuxt_plugin_pluginclient_08906e1a' // Source: .\\color-mode\\plugin.client.js (mode: 'client')
 import nuxt_plugin_markdown_667a7ee3 from 'nuxt_plugin_markdown_667a7ee3' // Source: ..\\node_modules\\@nuxt\\content-theme-docs\\src\\plugins\\markdown (mode: 'all')
 import nuxt_plugin_init_9269fdf8 from 'nuxt_plugin_init_9269fdf8' // Source: ..\\node_modules\\@nuxt\\content-theme-docs\\src\\plugins\\init (mode: 'all')
 import nuxt_plugin_i18n_6bd029b2 from 'nuxt_plugin_i18n_6bd029b2' // Source: ..\\node_modules\\@nuxt\\content-theme-docs\\src\\plugins\\i18n.client (mode: 'client')
@@ -51,9 +53,23 @@ Vue.component('NChild', NuxtChild)
 // Component: <Nuxt>
 Vue.component(Nuxt.name, Nuxt)
 
+Object.defineProperty(Vue.prototype, '$nuxt', {
+  get() {
+    return this.$root.$options.$nuxt
+  },
+  configurable: true
+})
+
 Vue.use(Meta, {"keyName":"head","attribute":"data-n-head","ssrAttribute":"data-n-head-ssr","tagIDKeyName":"hid"})
 
 const defaultTransition = {"name":"page","mode":"out-in","appear":false,"appearClass":"appear","appearActiveClass":"appear-active","appearToClass":"appear-to"}
+
+const originalRegisterModule = Vuex.Store.prototype.registerModule
+const baseStoreOptions = { preserveState: process.client }
+
+function registerModule (path, rawModule, options = {}) {
+  return originalRegisterModule.call(this, path, rawModule, { ...baseStoreOptions, ...options })
+}
 
 async function createApp(ssrContext, config = {}) {
   const router = await createRouter(ssrContext)
@@ -63,15 +79,14 @@ async function createApp(ssrContext, config = {}) {
   store.$router = router
 
   // Fix SSR caveat https://github.com/nuxt/nuxt.js/issues/3757#issuecomment-414689141
-  const registerModule = store.registerModule
-  store.registerModule = (path, rawModule, options) => registerModule.call(store, path, rawModule, Object.assign({ preserveState: process.client }, options))
+  store.registerModule = registerModule
 
   // Create Root instance
 
   // here we inject the router and store to all child components,
   // making them available everywhere as `this.$router` and `this.$store`.
   const app = {
-    head: {"meta":[{"charset":"utf-8"},{"name":"viewport","content":"width=device-width, initial-scale=1"},{"hid":"mobile-web-app-capable","name":"mobile-web-app-capable","content":"yes"},{"hid":"apple-mobile-web-app-title","name":"apple-mobile-web-app-title","content":"node-markdown-parser"},{"hid":"author","name":"author","content":"Cristian Enguídanos Nebot"},{"hid":"description","name":"description","content":"Node Markdown Parser for transform markdown files to JSON object"},{"hid":"theme-color","name":"theme-color","content":"cyan"},{"hid":"og:type","name":"og:type","property":"og:type","content":"website"},{"hid":"og:title","name":"og:title","property":"og:title","content":"node-markdown-parser"},{"hid":"og:site_name","name":"og:site_name","property":"og:site_name","content":"node-markdown-parser"},{"hid":"og:description","name":"og:description","property":"og:description","content":"Node Markdown Parser for transform markdown files to JSON object"}],"link":[{"rel":"manifest","href":"\u002F_nuxt\u002Fmanifest.6284bf27.json"},{"rel":"dns-prefetch","href":"https:\u002F\u002Ffonts.gstatic.com\u002F"},{"rel":"preconnect","href":"https:\u002F\u002Ffonts.gstatic.com\u002F","crossorigin":true},{"rel":"stylesheet","href":"https:\u002F\u002Ffonts.googleapis.com\u002Fcss2?family=DM+Sans&family=DM+Mono"}],"style":[],"script":[{"hid":"nuxt-color-mode-script","innerHTML":"!function (){\"use strict\";var e=window,t=document,s=t.documentElement,n=[\"dark\",\"light\"],a=function(e){for(var s=e+\"=\",n=t.cookie.split(\";\"),a=0;a\u003Cn.length;a++){for(var o=n[a];\" \"===o.charAt(0);)o=o.substring(1,o.length);if(0===o.indexOf(s))return o.substring(s.length,o.length)}return null}(\"nuxt-color-mode\")||\"system\",o=\"system\"===a?i():a;function r(e){var t=e+\"-mode\";s.classList?s.classList.add(t):s.className+=\" \"+t}function c(t){return e.matchMedia(\"(prefers-color-scheme\"+t+\")\")}function i(){if(e.matchMedia&&\"not all\"!==c(\"\").media)for(var t of n)if(c(\":\"+t).matches)return t;return\"light\"}r(o),e[\"__NUXT_COLOR_MODE__\"]={preference:a,value:o,getColorScheme:i,addClass:r,removeClass:function(e){var t=e+\"-mode\";s.classList?s.classList.remove(t):s.className=s.className.replace(new RegExp(t,\"g\"),\"\")}}}();\n","pbody":true}],"__dangerouslyDisableSanitizersByTagID":{"nuxt-color-mode-script":["innerHTML"]},"title":"node-markdown-parser","htmlAttrs":{"lang":"en"}},
+    head: {"meta":[{"charset":"utf-8"},{"name":"viewport","content":"width=device-width, initial-scale=1"}],"link":[{"hid":"gf-prefetch","rel":"dns-prefetch","href":"https:\u002F\u002Ffonts.gstatic.com\u002F"},{"hid":"gf-preconnect","rel":"preconnect","href":"https:\u002F\u002Ffonts.gstatic.com\u002F","crossorigin":""},{"hid":"gf-preload","rel":"preload","as":"style","href":"https:\u002F\u002Ffonts.googleapis.com\u002Fcss2?family=DM+Sans&family=DM+Mono"}],"style":[],"script":[{"hid":"nuxt-color-mode-script","innerHTML":"!function (){\"use strict\";var e=window,s=document,o=s.documentElement,a=[\"dark\",\"light\"],t=window.localStorage.getItem(\"nuxt-color-mode\")||\"system\",c=\"system\"===t?l():t,i=s.body.getAttribute(\"data-color-mode-forced\");function r(e){var s=\"\"+e+\"-mode\";o.classList?o.classList.add(s):o.className+=\" \"+s}function n(s){return e.matchMedia(\"(prefers-color-scheme\"+s+\")\")}function l(){if(e.matchMedia&&\"not all\"!==n(\"\").media)for(var s of a)if(n(\":\"+s).matches)return s;return\"light\"}i&&(c=i),r(c),e[\"__NUXT_COLOR_MODE__\"]={preference:t,value:c,getColorScheme:l,addClass:r,removeClass:function(e){var s=\"\"+e+\"-mode\";o.classList?o.classList.remove(s):o.className=o.className.replace(new RegExp(s,\"g\"),\"\")}}}();\n","pbody":true},{"hid":"gf-script","innerHTML":"(function(){var l=document.createElement('link');l.rel=\"stylesheet\";l.href=\"https:\u002F\u002Ffonts.googleapis.com\u002Fcss2?family=DM+Sans&family=DM+Mono\";document.querySelector(\"head\").appendChild(l);})();"}],"__dangerouslyDisableSanitizersByTagID":{"nuxt-color-mode-script":["innerHTML"],"gf-script":["innerHTML"],"gf-noscript":["innerHTML"]},"noscript":[{"hid":"gf-noscript","innerHTML":"\u003Clink rel=\"stylesheet\" href=\"https:\u002F\u002Ffonts.googleapis.com\u002Fcss2?family=DM+Sans&family=DM+Mono\"\u003E"}]},
 
     store,
     router,
@@ -200,36 +215,40 @@ async function createApp(ssrContext, config = {}) {
   }
   // Plugin execution
 
-  if (typeof nuxt_plugin_plugin_ea6636f6 === 'function') {
-    await nuxt_plugin_plugin_ea6636f6(app.context, inject)
+  if (typeof nuxt_plugin_plugin_feec7978 === 'function') {
+    await nuxt_plugin_plugin_feec7978(app.context, inject)
   }
 
-  if (typeof nuxt_plugin_pluginrouting_c44741de === 'function') {
-    await nuxt_plugin_pluginrouting_c44741de(app.context, inject)
+  if (process.client && typeof nuxt_plugin_pluginclient_5b0fe1fa === 'function') {
+    await nuxt_plugin_pluginclient_5b0fe1fa(app.context, inject)
   }
 
-  if (typeof nuxt_plugin_pluginmain_315a4dfe === 'function') {
-    await nuxt_plugin_pluginmain_315a4dfe(app.context, inject)
+  if (process.server && typeof nuxt_plugin_pluginserver_7e6d58fc === 'function') {
+    await nuxt_plugin_pluginserver_7e6d58fc(app.context, inject)
   }
 
-  if (process.client && typeof nuxt_plugin_workbox_19de4344 === 'function') {
-    await nuxt_plugin_workbox_19de4344(app.context, inject)
+  if (typeof nuxt_plugin_pluginrouting_7aeb891c === 'function') {
+    await nuxt_plugin_pluginrouting_7aeb891c(app.context, inject)
   }
 
-  if (process.client && typeof nuxt_plugin_pluginclient_606e7abb === 'function') {
-    await nuxt_plugin_pluginclient_606e7abb(app.context, inject)
+  if (typeof nuxt_plugin_pluginmain_2bfbb53d === 'function') {
+    await nuxt_plugin_pluginmain_2bfbb53d(app.context, inject)
   }
 
-  if (process.server && typeof nuxt_plugin_pluginserver_73b0277a === 'function') {
-    await nuxt_plugin_pluginserver_73b0277a(app.context, inject)
+  if (process.client && typeof nuxt_plugin_workbox_547fb4c3 === 'function') {
+    await nuxt_plugin_workbox_547fb4c3(app.context, inject)
   }
 
-  if (process.server && typeof nuxt_plugin_pluginserver_499c0341 === 'function') {
-    await nuxt_plugin_pluginserver_499c0341(app.context, inject)
+  if (typeof nuxt_plugin_metaplugin_00973643 === 'function') {
+    await nuxt_plugin_metaplugin_00973643(app.context, inject)
   }
 
-  if (process.client && typeof nuxt_plugin_pluginclient_383adc8e === 'function') {
-    await nuxt_plugin_pluginclient_383adc8e(app.context, inject)
+  if (process.server && typeof nuxt_plugin_pluginserver_6e49dfa2 === 'function') {
+    await nuxt_plugin_pluginserver_6e49dfa2(app.context, inject)
+  }
+
+  if (process.client && typeof nuxt_plugin_pluginclient_08906e1a === 'function') {
+    await nuxt_plugin_pluginclient_08906e1a(app.context, inject)
   }
 
   if (typeof nuxt_plugin_markdown_667a7ee3 === 'function') {
@@ -263,9 +282,9 @@ async function createApp(ssrContext, config = {}) {
   if (process.server && ssrContext && ssrContext.url) {
     await new Promise((resolve, reject) => {
       router.push(ssrContext.url, resolve, (err) => {
-        // https://github.com/vuejs/vue-router/blob/v3.3.4/src/history/errors.js
+        // https://github.com/vuejs/vue-router/blob/v3.4.3/src/util/errors.js
         if (!err._isRouter) return reject(err)
-        if (err.type !== 1 /* NavigationFailureType.redirected */) return resolve()
+        if (err.type !== 2 /* NavigationFailureType.redirected */) return resolve()
 
         // navigated to a different route in router guard
         const unregister = router.afterEach(async (to, from) => {

@@ -1,12 +1,4 @@
-import {
-  LOCALE_CODE_KEY,
-  LOCALE_FILE_KEY,
-  MODULE_NAME,
-  defaultLangFile
-} from './options'
-/*  */
-import defaultLangModule from './default-lang/en-US.js'
-/*  */
+import { LOCALE_CODE_KEY, LOCALE_FILE_KEY, MODULE_NAME } from './options'
 
 /**
  * Asynchronously load messages from translation files
@@ -30,18 +22,13 @@ export async function loadLanguageAsync (context, locale) {
         let messages
         if (process.client) {
           const { nuxtState } = context
-          if (nuxtState.__i18n && nuxtState.__i18n.langs[file]) {
-            messages = nuxtState.__i18n.langs[file]
+          if (nuxtState && nuxtState.__i18n && nuxtState.__i18n.langs[locale]) {
+            messages = nuxtState.__i18n.langs[locale]
           }
         }
         if (!messages) {
           try {
-            let langFileModule
-            if (file === defaultLangFile) {
-              langFileModule = defaultLangModule
-            } else {
-              /*  */
-            }
+            const langFileModule = await import(/* webpackChunkName: "lang-[request]" */ `~/i18n/${file}`)
             const getter = langFileModule.default || langFileModule
             messages = typeof getter === 'function' ? await Promise.resolve(getter(context, locale)) : getter
           } catch (error) {

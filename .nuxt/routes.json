@@ -2,15 +2,22 @@
   {
     "name": "releases___en",
     "path": "/releases",
-    "component": "C:\\\\Users\\\\Cristian\\\\Repositorios\\\\libs\\\\node-markdown-parser\\\\node_modules\\\\@nuxt\\\\content-theme-docs\\\\src\\\\pages\\\\releases.vue",
+    "component": "C:\\\\Users\\\\cengu\\\\Repositorios\\\\cenguidanos\\\\node-markdown-parser\\\\node_modules\\\\@nuxt\\\\content-theme-docs\\\\src\\\\pages\\\\releases.vue",
     "chunkName": "pages/releases",
-    "_name": "_7cc22b3c"
+    "_name": "_eecdcbd6"
   },
   {
-    "name": "slug___en",
-    "path": "/:slug?",
-    "component": "C:\\\\Users\\\\Cristian\\\\Repositorios\\\\libs\\\\node-markdown-parser\\\\node_modules\\\\@nuxt\\\\content-theme-docs\\\\src\\\\pages\\\\_slug.vue",
-    "chunkName": "pages/_slug",
-    "_name": "_1b831aca"
+    "name": "index___en",
+    "path": "/",
+    "component": "C:\\\\Users\\\\cengu\\\\Repositorios\\\\cenguidanos\\\\node-markdown-parser\\\\node_modules\\\\@nuxt\\\\content-theme-docs\\\\src\\\\pages\\\\_.vue",
+    "chunkName": "pages/_",
+    "_name": "_36078734"
+  },
+  {
+    "name": "all___en",
+    "path": "/*",
+    "component": "C:\\\\Users\\\\cengu\\\\Repositorios\\\\cenguidanos\\\\node-markdown-parser\\\\node_modules\\\\@nuxt\\\\content-theme-docs\\\\src\\\\pages\\\\_.vue",
+    "chunkName": "pages/_",
+    "_name": "_36078734"
   }
 ]
